@@ -531,7 +531,7 @@ SSRC = this.config.ssrc
              return;
            }
            number = this.streamNumber++;
-           self.postMessage({text: 'New incoming stream # ' + number});
+           //self.postMessage({text: 'New incoming stream # ' + number});
            stream_reader = value.getReader();
          } catch (e) {
            self.postMessage({severity: 'fatal', text: `Error in obtaining stream.getReader(), stream # ${number} : ${e.message}`});
@@ -542,12 +542,12 @@ SSRC = this.config.ssrc
              if (done) {
                 return;
              }
+             //self.postMessage({text: 'Chunk arriving: ' + JSON.stringify(value)});
              let buf = new ArrayBuffer(value.length);
              let bufView = new Uint8Array(buf);
              for (var i=0, bufLen=value.length; i < bufLen; i++) {
                bufView[i] = value[i];
              }
-             self.postMessage({text: 'Chunk arriving: ' + JSON.stringify(buf)});
              controller.enqueue(buf);
            }
          } catch (e) {
