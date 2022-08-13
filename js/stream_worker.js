@@ -252,12 +252,12 @@ SSRC = this.config.ssrc
          writeUInt32(hdr, 12, chunk.deltaframeIndex);
          writeUInt64(hdr, 16, BigInt(chunk.timestamp));
          writeUInt32(hdr, 24, config.ssrc);
-         // self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
-         // self.postMessage({text: 'Serial seq: ' + chunk.seqNo + ' kf: ' + chunk.keyframeIndex + ' delta: ' + chunk.deltaframeIndex + ' dur: ' + chunk.duration + ' ts: ' + chunk.timestamp + ' ssrc: ' + config.ssrc +  ' pt: ' + pt + ' tid: ' + tid + ' type: ' + chunk.type + ' discard: ' + d + ' base: ' + b});
+         //self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
+         //self.postMessage({text: 'Serial seq: ' + chunk.seqNo + ' kf: ' + chunk.keyframeIndex + ' delta: ' + chunk.deltaframeIndex + ' dur: ' + chunk.duration + ' ts: ' + chunk.timestamp + ' ssrc: ' + config.ssrc +  ' pt: ' + pt + ' tid: ' + tid + ' type: ' + chunk.type + ' discard: ' + d + ' base: ' + b});
          if (chunk.type == "config") {
            let enc = new TextEncoder();
            const cfg = enc.encode(chunk.config); 
-           // self.postMessage({text: 'Serial Config: ' + chunk.config + ' Length: ' + cfg.length});
+           self.postMessage({text: 'Serial Config: ' + chunk.config + ' Length: ' + cfg.length});
            let result = new Uint8Array( hdr.byteLength + cfg.length);
            result.set(new Uint8Array(hdr), 0);
            result.set(new Uint8Array(cfg), hdr.byteLength);
@@ -295,16 +295,17 @@ SSRC = this.config.ssrc
          const B1 = (first4 & 0x0000FF00) >> 8;
          const B2 = (first4 & 0x00FF0000) >> 16;
          const B3 = (first4 & 0xFF000000) >> 24; 
-         // self.postMessage({text: 'Deserial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
+         //self.postMessage({text: 'Deserial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
          const lid = B0;
          const pt =  B2;
          const tid = (B1 & 0xE0) >> 5;
          const i = (B1 & 0x04) >> 2;
-         const seqNo = readUInt32(chunk, 4)
+         const seqNo = readUInt32(chunk, 4);
          const keyframeIndex   = readUInt32(chunk, 8);
          const deltaframeIndex = readUInt32(chunk, 12);
          const timestamp = readUInt64(chunk, 16);
          const ssrc = readUInt32(chunk, 24);
+         const ktype = (i == 1? 'key' : 'delta');
          let hydChunk;
          if (pt == 0) {
            hydChunk = {
@@ -317,11 +318,17 @@ SSRC = this.config.ssrc
          } else {
            let data = new Uint8Array(chunk.byteLength - 28); //create Uint8Array for data
            data.set(new Uint8Array(chunk, 28));
-           hydChunk = new EncodedVideoChunk ({
-              type: (i == 1 ? 'key' : 'delta'),
-              timestamp: timestamp,
-              data: data.buffer
-           });
+           try {
+             hydChunk = new EncodedVideoChunk ({
+               type: ktype,
+               timestamp: timestamp,
+               data: data.buffer
+             });
+           } catch (e) {
+               self.postMessage({text: 'Deserial hdr: 28 ' + 'chunk length: ' + chunk.byteLength });
+               self.postMessage({text: 'Deserial seq: ' + seqNo + ' kf: ' + keyframeIndex + ' delta: ' + deltaframeIndex + ' ts: ' + timestamp + ' ssrc: ' + ssrc + ' pt: ' + pt + ' tid: ' + tid + ' type: ' + ktype});
+               self.postMessage({severity: 'fatal', text: `Deserial error: ${e.message}`}); 
+           }
          }
          hydChunk.temporalLayerId = tid;
          hydChunk.ssrc = ssrc;
