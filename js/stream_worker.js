@@ -33,6 +33,7 @@ let decqueue_aggregate = {
   sum: 0,
 };
 
+
 function enc_update(duration) {
   enc_aggregate.all.push(duration);
   enc_aggregate.min = Math.min(enc_aggregate.min, duration);
@@ -222,47 +223,43 @@ SSRC = this.config.ssrc
          const writeUInt32 = function(arr, pos, val)
          {
            let view = new DataView(arr);
-           view.setUint32(pos, val, false);
+           view.setUint32(pos, val, false); //Big-endian
          };
-         const writeNUInt32 = function(arr, pos, val)
+         const writeUInt64 = function(arr, pos, val)
          {
            let view = new DataView(arr);
-           let nval = ((val & 0xFF000000) >>> 24) | ((val & 0x00FF0000) >>> 16) } | ((val & 0x0000FF00 >>> 8) | ((val & 0x000000FF >>> 0);
-           view.setUint32(pos, nval, false);
+           view.setBigUint64(pos, val, false); //Big-endian
          };
-         const writeNUInt64 = function(arr, pos, val)
-         {
-           let view = new DataView(arr);
-           let nval = ((val & 0xFF00000000000000) >>> 56) | ((val & 0x00FF000000000000) >>> 48) } | ((val & 0x0000FF0000000000) >>> 40) | ((val & 0x000000FF00000000) >>> 32) | ((val & 0x00000000FF000000) >>> 24) | ((val & 0x0000000000FF0000) >>> 16) | ((val & 0x000000000000FF00) >>> 8) | ((val & 0x00000000000000FF) >>> 0);
-           view.setBigUint64(pos, nval, false);
-         };
+         let tid, duration, timestamp;
          if (chunk.type == 'config') {
-           let tid = 0;
-           let duration = 0;
-           let timestamp = 0;
+           tid = 0;
+           duration = 0;
+           timestamp = 0;
          } else {
-           let tid = chunk.svc.temporalLayerId;
-           let duration = chunk.duration;
-           let timestamp = chunk.timestamp;
+           tid = chunk.temporalLayerId;
+           duration = chunk.duration;
+           timestamp = chunk.timestamp;
          }
          //Serialize the chunk
+         let pt = config.pt;
          let hdr = new ArrayBuffer( 4 + 4 + 4 + 4 + 8 + 4);
          let i = (chunk.type == 'key' ? 1 : 0);
          let d = (tid == 0 ? 0 : 1);
          let b = (tid == 0 ? 1 : 0);
          let B0 = 0;
-         let B1 = (3 << 7)| (i << 6) | (d << 5) | (b << 4) | tid;
+         let B1 = 192 + (i * 32) + (d * 16) + (b * 8) + tid;
          let B2 = (chunk.type == "config" ? 0 : config.pt);
          let B3 = 192;
-         let first4 = B0 | (B1 << 8) | (B2 << 16) | (B3 << 24);
+         //self.postMessage({text: 'i : ' + i + ' d: ' + d + ' b: ' + b + ' type: ' + chunk.type + ' pt: ' +  config.pt});
+         //self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3}); 
+         let first4 = (B3 & 0xff) | ((B2 & 0xff) << 8) | ((B1 & 0xff) << 16) | ((B0 & 0xff) << 24);
          writeUInt32(hdr, 0, first4);
-         writeNUInt32(hdr, 4, chunk.seqNo);
-         writeNUInt32(hdr, 8, chunk.keyframeIndex);
-         writeNUInt32(hdr, 12, chunk.deltaframeIndex);
-         writeNUInt64(hdr, 16, BigInt(timestamp));
-         writeNUInt32(hdr, 24, config.ssrc);
-         self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
-         self.postMessage({text: 'Serial seq: ' + chunk.seqNo + ' kf: ' + chunk.keyframeIndex + ' delta: ' + chunk.deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + config.ssrc +  ' pt: ' + pt + ' tid: ' + tid + ' type: ' + chunk.type + ' discard: ' + d + ' base: ' + b});
+         writeUInt32(hdr, 4, chunk.seqNo);
+         writeUInt32(hdr, 8, chunk.keyframeIndex);
+         writeUInt32(hdr, 12, chunk.deltaframeIndex);
+         writeUInt64(hdr, 16, BigInt(timestamp));
+         writeUInt32(hdr, 24, config.ssrc);
+         //self.postMessage({text: 'Serial seq: ' + chunk.seqNo + ' kf: ' + chunk.keyframeIndex + ' delta: ' + chunk.deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + config.ssrc +  ' pt: ' + pt + ' tid: ' + tid + ' type: ' + chunk.type + ' discard: ' + d + ' base: ' + b});
          if (chunk.type == "config") {
            let enc = new TextEncoder();
            const cfg = enc.encode(chunk.config);
@@ -289,31 +286,33 @@ SSRC = this.config.ssrc
        start (controller) {
        },
        transform(chunk, controller) {
-         const readNUInt32 = function(arr, pos)
+         const readUInt32 = function(arr, pos)
          {
            let view = new DataView(arr);
-           return view.getUint32(pos, false);
+           return view.getUint32(pos, false); //Big-endian
          };
-         const readNUInt64 = function(arr, pos)
+         const readUInt64 = function(arr, pos)
          {
            let view = new DataView(arr);
-           return Number(view.getBigUint64(pos, false));
+           return Number(view.getBigUint64(pos, false)); //Big-endian
          };
          const first4 = readUInt32(chunk, 0);
-         const B0 =  first4 & 0x000000FF;
-         const B1 = (first4 & 0x0000FF00) >> 8;
-         const B2 = (first4 & 0x00FF0000) >> 16;
-         const B3 = (first4 & 0xFF000000) >> 24;
-         self.postMessage({text: 'Deserial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
-         const lid = B0;
-         const pt =  B2;
-         const tid = (B1 & 0xE0) >> 5;
-         const i = (B1 & 0x04) >> 2;
-         const seqNo = readNUInt32(chunk, 4);
-         const keyframeIndex   = readNUInt32(chunk, 8);
-         const deltaframeIndex = readNUInt32(chunk, 12);
-         const timestamp = readNUInt64(chunk, 16);
-         const ssrc = readNUInt32(chunk, 24);
+         //self.postMessage({text: 'First4: ' + first4});
+         const B3 = (first4 & 0x000000FF);
+         const B2 = (first4 & 0x0000FF00) >> 8;
+         const B1 = (first4 & 0x00FF0000) >> 16;
+         const B0 = (first4 & 0xFF000000) >> 24;
+         //self.postMessage({text: 'Deserial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
+         const lid = (B0 & 0xff);
+         const pt =  (B2 & 0xff);
+         const tid = (B1 & 0x07);
+         const i =   (B1 & 0x20)/32;
+         const seqNo = readUInt32(chunk, 4);
+         const keyframeIndex   = readUInt32(chunk, 8);
+         const deltaframeIndex = readUInt32(chunk, 12);
+         const timestamp = readUInt64(chunk, 16);
+         const ssrc = readUInt32(chunk, 24);
+         //self.postMessage({text: 'lid: ' + lid + ' pt: ' + pt + ' tid: ' + tid + ' i: ' + i + ' seqNo: ' + seqNo + ' keyframeIndex: ' + keyframeIndex + ' deltaframeIndex: ' + deltaframeIndex + ' timestamp: ' + timestamp + ' ssrc: ' + ssrc});  
          let hydChunk;
          if (pt == 0) {
            hydChunk = {
@@ -332,14 +331,14 @@ SSRC = this.config.ssrc
               data: data.buffer
            });
          }
-         hydChunk.svc.temporalLayerId = tid;
+         hydChunk.temporalLayerId = tid;
          hydChunk.ssrc = ssrc;
          hydChunk.pt = pt;
          hydChunk.seqNo = seqNo;
          hydChunk.keyframeIndex = keyframeIndex;
          hydChunk.deltaframeIndex = deltaframeIndex;
-         // self.postMessage({text: 'Deserial hdr: 28 ' + 'chunk length: ' + chunk.byteLength });
-         // self.postMessage({text: 'Deserial seq: ' + hydChunk.seqNo + ' kf: ' + hydChunk.keyframeIndex + ' delta: ' + hydChunk.deltaframeIndex + ' dur: ' + hydChunk.duration + ' ts: ' + hydChunk.timestamp + ' ssrc: ' + hydChunk.ssrc + ' pt: ' + hydChunk.pt + ' tid: ' + tid + ' type: ' + hydChunk.type});
+         //self.postMessage({text: 'Deserial hdr: 28 ' + 'chunk length: ' + chunk.byteLength });
+         //self.postMessage({text: 'Deserial seq: ' + hydChunk.seqNo + ' kf: ' + hydChunk.keyframeIndex + ' delta: ' + hydChunk.deltaframeIndex + ' dur: ' + hydChunk.duration + ' ts: ' + hydChunk.timestamp + ' ssrc: ' + hydChunk.ssrc + ' pt: ' + hydChunk.pt + ' tid: ' + tid + ' type: ' + hydChunk.type});
          controller.enqueue(hydChunk);
        }
      });
