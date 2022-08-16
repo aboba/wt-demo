@@ -244,6 +244,7 @@ SSRC = this.config.ssrc
          let pt = config.pt;
          let hdr = new ArrayBuffer( 4 + 4 + 4 + 4 + 8 + 4);
          let i = (chunk.type == 'key' ? 1 : 0);
+         let lid = 0;
          let d = (tid == 0 ? 0 : 1);
          let b = (tid == 0 ? 1 : 0);
          let B0 = 0;
@@ -259,7 +260,7 @@ SSRC = this.config.ssrc
          writeUInt32(hdr, 12, chunk.deltaframeIndex);
          writeUInt64(hdr, 16, BigInt(timestamp));
          writeUInt32(hdr, 24, config.ssrc);
-         //self.postMessage({text: 'Serial seq: ' + chunk.seqNo + ' kf: ' + chunk.keyframeIndex + ' delta: ' + chunk.deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + config.ssrc +  ' pt: ' + pt + ' tid: ' + tid + ' type: ' + chunk.type + ' discard: ' + d + ' base: ' + b});
+         self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + config.pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + config.ssrc});
          if (chunk.type == "config") {
            let enc = new TextEncoder();
            const cfg = enc.encode(chunk.config);
@@ -307,12 +308,15 @@ SSRC = this.config.ssrc
          const pt =  (B2 & 0xff);
          const tid = (B1 & 0x07);
          const i =   (B1 & 0x20)/32;
+         const d =   (B1 & 0x10)/16;
+         const b =   (B1 & 0x08)/8
          const seqNo = readUInt32(chunk, 4);
          const keyframeIndex   = readUInt32(chunk, 8);
          const deltaframeIndex = readUInt32(chunk, 12);
          const timestamp = readUInt64(chunk, 16);
          const ssrc = readUInt32(chunk, 24);
-         //self.postMessage({text: 'lid: ' + lid + ' pt: ' + pt + ' tid: ' + tid + ' i: ' + i + ' seqNo: ' + seqNo + ' keyframeIndex: ' + keyframeIndex + ' deltaframeIndex: ' + deltaframeIndex + ' timestamp: ' + timestamp + ' ssrc: ' + ssrc});  
+         const duration = 0;
+         self.postMessage({text: 'Dserializ seqNo: ' + seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + keyframeIndex + ' dfi: ' + deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + ssrc});
          let hydChunk;
          if (pt == 0) {
            hydChunk = {
@@ -338,7 +342,6 @@ SSRC = this.config.ssrc
          hydChunk.keyframeIndex = keyframeIndex;
          hydChunk.deltaframeIndex = deltaframeIndex;
          //self.postMessage({text: 'Deserial hdr: 28 ' + 'chunk length: ' + chunk.byteLength });
-         //self.postMessage({text: 'Deserial seq: ' + hydChunk.seqNo + ' kf: ' + hydChunk.keyframeIndex + ' delta: ' + hydChunk.deltaframeIndex + ' dur: ' + hydChunk.duration + ' ts: ' + hydChunk.timestamp + ' ssrc: ' + hydChunk.ssrc + ' pt: ' + hydChunk.pt + ' tid: ' + tid + ' type: ' + hydChunk.type});
          controller.enqueue(hydChunk);
        }
      });
@@ -551,12 +554,7 @@ SSRC = this.config.ssrc
                 return;
              }
              //self.postMessage({text: 'Chunk arriving: ' + JSON.stringify(value)});
-             let buf = new ArrayBuffer(value.length);
-             let bufView = new Uint8Array(buf);
-             for (var i=0, bufLen=value.length; i < bufLen; i++) {
-               bufView[i] = value[i];
-             }
-             controller.enqueue(buf);
+             controller.enqueue(value.buffer);
            }
          } catch (e) {
            self.postMessage({severity: 'fatal', text: `Error while reading from stream # ${number} : ${e.message}`});
