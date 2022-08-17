@@ -236,27 +236,28 @@ SSRC = this.config.ssrc
            let view = new DataView(arr);
            view.setBigUint64(pos, val, false); //Big-endian
          };
-         let tid, duration, timestamp;
+         let tid, pt, duration, timestamp;
          if (chunk.type == 'config') {
            tid = 0;
            duration = 0;
            timestamp = 0;
+           pt = 0;
          } else {
            tid = chunk.temporalLayerId;
            duration = chunk.duration;
            timestamp = chunk.timestamp;
+           pt = config.pt;
          }
          //Serialize the chunk
-         let pt = config.pt;
          let hdr = new ArrayBuffer( 4 + 4 + 4 + 4 + 8 + 4);
          let i = (chunk.type == 'key' ? 1 : 0);
          let lid = 0;
          let d = (tid == 0 ? 0 : 1);
          let b = (tid == 0 ? 1 : 0);
-         let B0 = 0;
-         let B1 = 192 + (i * 32) + (d * 16) + (b * 8) + tid;
-         let B2 = (chunk.type == "config" ? 0 : config.pt);
-         let B3 = 192;
+         let B3 = 0;
+         let B2 = 192 + (i * 32) + (d * 16) + (b * 8) + tid;
+         let B1 = (chunk.type == "config" ? 0 : config.pt);
+         let B0 = 192;
          //self.postMessage({text: 'i : ' + i + ' d: ' + d + ' b: ' + b + ' type: ' + chunk.type + ' pt: ' +  config.pt});
          //self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3}); 
          let first4 = (B3 & 0xff) | ((B2 & 0xff) << 8) | ((B1 & 0xff) << 16) | ((B0 & 0xff) << 24);
@@ -266,7 +267,6 @@ SSRC = this.config.ssrc
          writeUInt32(hdr, 12, chunk.deltaframeIndex);
          writeUInt64(hdr, 16, BigInt(timestamp));
          writeUInt32(hdr, 24, config.ssrc);
-         self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + config.pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + config.ssrc});
          if (chunk.type == "config") {
            let enc = new TextEncoder();
            const cfg = enc.encode(chunk.config);
@@ -274,6 +274,7 @@ SSRC = this.config.ssrc
            let result = new Uint8Array( hdr.byteLength + cfg.length);
            result.set(new Uint8Array(hdr), 0);
            result.set(new Uint8Array(cfg), hdr.byteLength);
+           self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: 0 i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' length: ' + result.byteLength});
            controller.enqueue(result.buffer);
          } else {
            let result = new Uint8Array( hdr.byteLength + chunk.byteLength);
@@ -282,6 +283,7 @@ SSRC = this.config.ssrc
            chunk.copyTo(data);
            result.set(new Uint8Array(data), hdr.byteLength);
            // self.postMessage({text: 'Serial hdr: ' + hdr.byteLength + ' chunk length: ' + chunk.byteLength + ' result length: ' + result.byteLength});
+           self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + config.pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' length: ' + result.byteLength});
            controller.enqueue(result.buffer);
          }
       }
@@ -305,10 +307,10 @@ SSRC = this.config.ssrc
          };
          const first4 = readUInt32(chunk, 0);
          //self.postMessage({text: 'First4: ' + first4});
-         const B3 = (first4 & 0x000000FF);
-         const B2 = (first4 & 0x0000FF00) >> 8;
-         const B1 = (first4 & 0x00FF0000) >> 16;
-         const B0 = (first4 & 0xFF000000) >> 24;
+         const B0 = (first4 & 0x000000FF);
+         const B1 = (first4 & 0x0000FF00) >> 8;
+         const B2 = (first4 & 0x00FF0000) >> 16;
+         const B3 = (first4 & 0xFF000000) >> 24;
          //self.postMessage({text: 'Deserial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3});
          const lid = (B0 & 0xff);
          const pt =  (B2 & 0xff);
@@ -322,7 +324,7 @@ SSRC = this.config.ssrc
          const timestamp = readUInt64(chunk, 16);
          const ssrc = readUInt32(chunk, 24);
          const duration = 0;
-         self.postMessage({text: 'Dserializ seqNo: ' + seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + keyframeIndex + ' dfi: ' + deltaframeIndex + ' dur: ' + duration + ' ts: ' + timestamp + ' ssrc: ' + ssrc});
+         self.postMessage({text: 'Dserializ seqNo: ' + seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + keyframeIndex + ' dfi: ' + deltaframeIndex + ' ts: ' + timestamp + ' ssrc: ' + ssrc + ' length: ' + chunk.byteLength});
          let hydChunk;
          if (pt == 0) {
            hydChunk = {
@@ -514,10 +516,14 @@ SSRC = this.config.ssrc
          // test to see if transport is still usable?
        },
        async write(chunk, controller) {
-         let stream = await transport.createUnidirectionalStream();
-         let writer = stream.getWriter();
-         await writer.write(chunk);
-         await writer.close();
+         try {
+           let stream = await transport.createUnidirectionalStream();
+           let writer = stream.getWriter();
+           await writer.write(chunk);
+           await writer.close();
+         } catch (e) {
+           self.postMessage({severity: 'fatal', text: 'Failiure to write chunk'});
+         }
        }, 
        async close(controller) {
          // close the transport? 
@@ -548,7 +554,7 @@ SSRC = this.config.ssrc
              return;
            }
            number = this.streamNumber++;
-           //self.postMessage({text: 'New incoming stream # ' + number});
+           self.postMessage({text: 'New incoming stream # ' + number});
            stream_reader = value.getReader();
          } catch (e) {
            self.postMessage({severity: 'fatal', text: `Error in obtaining stream.getReader(), stream # ${number} : ${e.message}`});
@@ -559,16 +565,17 @@ SSRC = this.config.ssrc
              const { value, done } = await stream_reader.read();
              if (done) {
                 controller.enqueue(frame.buffer); //complete frame has been received
+                self.postMessage({text: 'ReceiveStream: frame # ' + number + ' enqueued'});
                 return;
              }
              if (first) {
                 frame = value;
-                //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
+                self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
                 first = false;
              } else {
                i++;
+               self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + (frame.byteLength + value.byteLength)});
                frame = appendBuffer(frame, value);
-               //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
              }
            }
          } catch (e) {
@@ -577,6 +584,7 @@ SSRC = this.config.ssrc
        },
        async cancel(reason){
          // called when cancel(reason) is called
+         self.postMessage({severity: 'fatal', text: `Readable Stream Cancelled: ${reason}`});
        }
      });
    }
