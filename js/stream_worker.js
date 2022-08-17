@@ -124,6 +124,16 @@ function decqueue_report() {
   };
 }
 
+function readUInt32(arr, pos) {
+  let view = new DataView(arr);
+  return view.getUint32(pos, false); //Big-endian
+ };
+ 
+function readUInt64(arr, pos) {
+  let view = new DataView(arr);
+  return Number(view.getBigUint64(pos, false)); //Big-endian
+};
+
 self.addEventListener('message', async function(e) {
   if (stopped) return;
   // In this demo, we expect at most two messages, one of each type.
@@ -188,6 +198,8 @@ Header format:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |1 1 0 0 0 0 0 0|       PT      |S|E|I|D|B| TID |    LID        |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                      length                                   |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      sequence number                          |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                      keyframe index                           |
@@ -214,6 +226,7 @@ S, E, I, D, B, TID, LID defined in draft-ietf-avtext-framemarking
    I = 1 means chunk.type == 'key', 0 means chunk.type == 'delta'
    TID = chunk.temporalLayerId
    LID = 0 (no support for spatial scalability)
+length = length of the frame, including the header
 sequence number = counter incrementing with each frame
 keyframe index = how many keyframes have been sent
 deltaframe index = how many delta frames since the last keyframe
@@ -249,7 +262,7 @@ SSRC = this.config.ssrc
            pt = config.pt;
          }
          //Serialize the chunk
-         let hdr = new ArrayBuffer( 4 + 4 + 4 + 4 + 8 + 4);
+         let hdr = new ArrayBuffer( 4 + 4 + 4 + 4 + 8 + 4 + 4);
          let i = (chunk.type == 'key' ? 1 : 0);
          let lid = 0;
          let d = (tid == 0 ? 0 : 1);
@@ -258,32 +271,36 @@ SSRC = this.config.ssrc
          let B2 = 192 + (i * 32) + (d * 16) + (b * 8) + tid;
          let B1 = (chunk.type == "config" ? 0 : config.pt);
          let B0 = 192;
-         //self.postMessage({text: 'i : ' + i + ' d: ' + d + ' b: ' + b + ' type: ' + chunk.type + ' pt: ' +  config.pt});
+         //self.postMessage({text: 'i : ' + i + ' d: ' + d + ' b: ' + b + ' type: ' + chunk.type + ' pt: ' +  config.pt + ' len: ' + len});
          //self.postMessage({text: 'Serial B0: ' + B0 + ' B1: ' + B1 + ' B2: ' + B2 + ' B3: ' + B3}); 
          let first4 = (B3 & 0xff) | ((B2 & 0xff) << 8) | ((B1 & 0xff) << 16) | ((B0 & 0xff) << 24);
          writeUInt32(hdr, 0, first4);
-         writeUInt32(hdr, 4, chunk.seqNo);
-         writeUInt32(hdr, 8, chunk.keyframeIndex);
-         writeUInt32(hdr, 12, chunk.deltaframeIndex);
-         writeUInt64(hdr, 16, BigInt(timestamp));
-         writeUInt32(hdr, 24, config.ssrc);
+         writeUInt32(hdr, 8, chunk.seqNo);
+         writeUInt32(hdr, 12, chunk.keyframeIndex);
+         writeUInt32(hdr, 16, chunk.deltaframeIndex);
+         writeUInt64(hdr, 20, BigInt(timestamp));
+         writeUInt32(hdr, 28, config.ssrc);
          if (chunk.type == "config") {
            let enc = new TextEncoder();
            const cfg = enc.encode(chunk.config);
            // self.postMessage({text: 'Serial Config: ' + chunk.config + ' Length: ' + cfg.length});
            let result = new Uint8Array( hdr.byteLength + cfg.length);
+           let len = (cfg.length + 32) & 0xFFFFFFFF; 
+           writeUInt32(hdr, 4, len); 
            result.set(new Uint8Array(hdr), 0);
            result.set(new Uint8Array(cfg), hdr.byteLength);
-           self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: 0 i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' length: ' + result.byteLength});
+           //self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: 0 i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' actual len: ' + result.byteLength + ' pack len: ' + len});
            controller.enqueue(result.buffer);
          } else {
+           let len = (chunk.byteLength + 32) & 0xFFFFFFFF;
+           writeUInt32(hdr, 4, len);
            let result = new Uint8Array( hdr.byteLength + chunk.byteLength);
            result.set(new Uint8Array(hdr), 0);
            let data = new ArrayBuffer(chunk.byteLength);
            chunk.copyTo(data);
            result.set(new Uint8Array(data), hdr.byteLength);
            // self.postMessage({text: 'Serial hdr: ' + hdr.byteLength + ' chunk length: ' + chunk.byteLength + ' result length: ' + result.byteLength});
-           self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + config.pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' length: ' + result.byteLength});
+           //self.postMessage({text: 'Serialize seqNo: ' + chunk.seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + config.pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + chunk.keyframeIndex + ' dfi: ' + chunk.deltaframeIndex +  ' ts: ' + timestamp + ' ssrc: ' + config.ssrc + ' actual len: ' + result.byteLength + ' pack len: ' + len});
            controller.enqueue(result.buffer);
          }
       }
@@ -295,16 +312,6 @@ SSRC = this.config.ssrc
        start (controller) {
        },
        transform(chunk, controller) {
-         const readUInt32 = function(arr, pos)
-         {
-           let view = new DataView(arr);
-           return view.getUint32(pos, false); //Big-endian
-         };
-         const readUInt64 = function(arr, pos)
-         {
-           let view = new DataView(arr);
-           return Number(view.getBigUint64(pos, false)); //Big-endian
-         };
          const first4 = readUInt32(chunk, 0);
          //self.postMessage({text: 'First4: ' + first4});
          const B0 = (first4 & 0x000000FF);
@@ -318,13 +325,14 @@ SSRC = this.config.ssrc
          const i =   (B1 & 0x20)/32;
          const d =   (B1 & 0x10)/16;
          const b =   (B1 & 0x08)/8
-         const seqNo = readUInt32(chunk, 4);
-         const keyframeIndex   = readUInt32(chunk, 8);
-         const deltaframeIndex = readUInt32(chunk, 12);
-         const timestamp = readUInt64(chunk, 16);
-         const ssrc = readUInt32(chunk, 24);
+         const len = readUInt32(chunk, 4)
+         const seqNo = readUInt32(chunk, 8);
+         const keyframeIndex   = readUInt32(chunk, 12);
+         const deltaframeIndex = readUInt32(chunk, 16);
+         const timestamp = readUInt64(chunk, 20);
+         const ssrc = readUInt32(chunk, 28);
          const duration = 0;
-         self.postMessage({text: 'Dserializ seqNo: ' + seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + keyframeIndex + ' dfi: ' + deltaframeIndex + ' ts: ' + timestamp + ' ssrc: ' + ssrc + ' length: ' + chunk.byteLength});
+         //self.postMessage({text: 'Dserializ seqNo: ' + seqNo + ' lid: ' + lid + ' tid: ' + tid + ' pt: ' + pt +  ' i: ' + i + ' d: ' + d + ' b: ' + b + ' kfi: ' + keyframeIndex + ' dfi: ' + deltaframeIndex + ' ts: ' + timestamp + ' ssrc: ' + ssrc + ' length: ' + chunk.byteLength});
          let hydChunk;
          if (pt == 0) {
            hydChunk = {
@@ -332,11 +340,11 @@ SSRC = this.config.ssrc
              timestamp: timestamp,
            };
            let dec = new TextDecoder();
-           hydChunk.config = dec.decode(new Uint8Array(chunk, 28));
+           hydChunk.config = dec.decode(new Uint8Array(chunk, 32));
            // self.postMessage({text: 'Deserial Config: ' + hydChunk.config});
          } else {
-           let data = new Uint8Array(chunk.byteLength - 28); //create Uint8Array for data
-           data.set(new Uint8Array(chunk, 28));
+           let data = new Uint8Array(chunk.byteLength - 32); //create Uint8Array for data
+           data.set(new Uint8Array(chunk, 32));
            hydChunk = new EncodedVideoChunk ({
               type: (i == 1 ? 'key' : 'delta'),
               timestamp: timestamp,
@@ -349,7 +357,7 @@ SSRC = this.config.ssrc
          hydChunk.seqNo = seqNo;
          hydChunk.keyframeIndex = keyframeIndex;
          hydChunk.deltaframeIndex = deltaframeIndex;
-         //self.postMessage({text: 'Deserial hdr: 28 ' + 'chunk length: ' + chunk.byteLength });
+         //self.postMessage({text: 'Deserial hdr: 32 ' + 'chunk length: ' + chunk.byteLength });
          controller.enqueue(hydChunk);
        }
      });
@@ -554,28 +562,35 @@ SSRC = this.config.ssrc
              return;
            }
            number = this.streamNumber++;
-           self.postMessage({text: 'New incoming stream # ' + number});
+           //self.postMessage({text: 'New incoming stream # ' + number});
            stream_reader = value.getReader();
          } catch (e) {
            self.postMessage({severity: 'fatal', text: `Error in obtaining stream.getReader(), stream # ${number} : ${e.message}`});
          }
          try {
-           let frame, i=0, first = true;
+           let i=0, packlen, totalen = 0, frame, first = true;
            while (true) {
              const { value, done } = await stream_reader.read();
              if (done) {
                 controller.enqueue(frame.buffer); //complete frame has been received
-                self.postMessage({text: 'ReceiveStream: frame # ' + number + ' enqueued'});
+                //self.postMessage({text: 'ReceiveStream: frame # ' + number + ' Received len: ' + totalen + ' Packet Len: ' + packlen + ' Actual len: ' + frame.byteLength});
                 return;
              }
              if (first) {
-                frame = value;
-                self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
+                packlen = (value[4] << 24) | (value[5] << 16) | (value[6] << 8) | (value[7] << 0);
+                if ((packlen < 1) || (packlen > 200000)) {
+                  self.postMessage({severity: 'fatal', text: 'Frame length problem: ' + packlen});
+                }
+                frame = new Uint8Array(packlen);
+                frame.set(new Uint8Array(value), 0);
+                //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + packlen});
                 first = false;
+                totalen += value.byteLength;
              } else {
                i++;
-               self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + (frame.byteLength + value.byteLength)});
-               frame = appendBuffer(frame, value);
+               //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + packlen});
+               frame.set(new Uint8Array(value), totalen);
+               totalen += value.byteLength; 
              }
            }
          } catch (e) {
