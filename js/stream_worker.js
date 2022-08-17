@@ -33,6 +33,12 @@ let decqueue_aggregate = {
   sum: 0,
 };
 
+function appendBuffer(buffer1, buffer2) {
+  let tmp = new Uint8Array(buffer1.byteLength + buffer2.byteLength);
+  tmp.set(new Uint8Array(buffer1), 0);
+  tmp.set(new Uint8Array(buffer2), buffer1.byteLength);
+  return tmp.buffer;
+};
 
 function enc_update(duration) {
   enc_aggregate.all.push(duration);
@@ -548,13 +554,22 @@ SSRC = this.config.ssrc
            self.postMessage({severity: 'fatal', text: `Error in obtaining stream.getReader(), stream # ${number} : ${e.message}`});
          }
          try {
+           let frame, i=0, first = true;
            while (true) {
              const { value, done } = await stream_reader.read();
              if (done) {
+                controller.enqueue(frame.buffer); //complete frame has been received
                 return;
              }
-             //self.postMessage({text: 'Chunk arriving: ' + JSON.stringify(value)});
-             controller.enqueue(value.buffer);
+             if (first) {
+                frame = value;
+                //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
+                first = false;
+             } else {
+               i++;
+               frame = appendBuffer(frame, value);
+               //self.postMessage({text: 'Fragment: ' + i + ' Length: ' + value.byteLength + ' Total: ' + frame.byteLength});
+             }
            }
          } catch (e) {
            self.postMessage({severity: 'fatal', text: `Error while reading from stream # ${number} : ${e.message}`});
