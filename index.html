@@ -73,13 +73,13 @@
 <div id="rateInput">
   <label for="rate">bitrate: </label>
   <input type="text" name="rate" id="rate" minlength=2 maxlength=8 size=8
-      value=100000>
+      value=150000>
 </div>
 
 <div id="keyInput">
   <label for="keygap">keyframe interval: </label>
   <input type="text" name="keygap" id="keygap" minlength=1 maxlength=4 size=4
-      value=120>
+      value=300>
 </div>
 
 <div id="codecButtons">
@@ -143,7 +143,9 @@
 </div>
 
 <video height="50%" id="inputVideo" autoplay muted></video>
-<video height="50%" id="outputVideo" autoplay muted></video>
+<br/>Local Video</br>
+<br/></br><video height="50%" id="outputVideo" autoplay muted></video>
+<br/>Encoded (and Decoded) Video via the WT Echo Server</br>
 <br/></br>
 <button id="connect">Start</button>
 <button id="stop">Stop</button>
