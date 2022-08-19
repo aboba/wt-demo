@@ -1,14 +1,13 @@
 'use strict';
 
 var preferredResolution;
-let bitrate = 3000000;
+let mediaStream, bitrate = 3000000;
 var stopped = false;
 var preferredCodec ="VP8";
 var mode = "L1T3";
 var latencyPref = "realtime";
 var hw = "no-preference";
 var streamWorker;
-var constraints;
 var inputStream, outputStream;
 var rate = document.querySelector('#rate');
 var connectButton = document.querySelector('#connect');
@@ -20,15 +19,63 @@ var hwButtons = document.querySelector('#hwButtons');
 connectButton.disabled = false;
 stopButton.disabled = true;
 
+const qvgaConstraints   = { video: {width: {exact: 320},  height: {exact: 240}}};
+const vgaConstraints    = { video: {width: {exact: 640},  height: {exact: 480}}};
+const hdConstraints     = { video: {width: {exact: 1280}, height: {exact: 720}}};
+const fullHdConstraints = { video: {width: {exact: 1920}, height: {exact: 1080}}};
+const tv4KConstraints   = { video: {width: {exact: 3840}, height: {exact: 2160}}};
+const cinema4KConstraints = { video: {width: {exact: 4096}, height: {exact: 2160}}};
+const eightKConstraints = { video: {width: {exact: 7680}, height: {exact: 4320}}};
+let constraints = qvgaConstraints;
+
 function addToEventLog(text, severity = 'info') {
   let log = document.querySelector('textarea');
   log.value += 'log-' + severity + ': ' + text + '\n';
   if (severity == 'fatal') stop();
 }
 
-function getResValue(radio) {
+async function getResValue(radio) {
   preferredResolution = radio.value;
   addToEventLog('Resolution selected: ' + preferredResolution);
+  switch(preferredResolution) {
+     case "qvga":
+       constraints = qvgaConstraints;
+       break;
+     case "vga":
+       constraints = vgaConstraints;
+       break;
+     case "hd":
+       constraints = hdConstraints;
+       break;
+     case "full-hd":
+       constraints = fullHdConstraints;
+       break;
+     case "tv4K":
+       constraints = tv4KConstraints;
+       break;
+     case "cinema4K":
+       constraints = cinema4KConstraints;
+       break;
+     case "eightK":
+       constraints = eightKConstraints;
+       break;
+     default:
+       constraints = qvgaConstraints;
+       break;
+  }
+  // Get a MediaStream from the webcam, and reset the resolution.
+  try {
+    //stop the tracks
+    if (mediaStream){
+      mediaStream.getTracks().forEach(track => {
+        track.stop();
+      });
+    }
+    mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('inputVideo').srcObject = mediaStream;
+  } catch(e){
+    addToEventLog(`gUM error: ${e.message}`);
+  }
 }
 
 function getPrefValue(radio) {
@@ -61,7 +108,7 @@ function stop() {
   addToEventLog('stop(): input stream cancelled and output stream aborted');
 }
 
-document.addEventListener('DOMContentLoaded', function(event) {
+document.addEventListener('DOMContentLoaded', async function(event) {
   if (stopped) return;
   addToEventLog('DOM Content Loaded');
 
@@ -77,6 +124,10 @@ document.addEventListener('DOMContentLoaded', function(event) {
     return;
   }
 
+  // Get a MediaStream from the webcam.
+  mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+  // Connect the webcam stream to the video element.
+  document.getElementById('inputVideo').srcObject = mediaStream;
   // Create a new worker.
   streamWorker = new Worker("js/stream_worker.js");
   addToEventLog('Worker created.');
@@ -84,14 +135,6 @@ document.addEventListener('DOMContentLoaded', function(event) {
   streamWorker.addEventListener('message', function(e) {
     addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
   }, false);
-
-  const qvgaConstraints   = { video: {width: {exact: 320},  height: {exact: 240}}};
-  const vgaConstraints    = { video: {width: {exact: 640},  height: {exact: 480}}};
-  const hdConstraints     = { video: {width: {exact: 1280}, height: {exact: 720}}};
-  const fullHdConstraints = { video: {width: {exact: 1920}, height: {exact: 1080}}};
-  const tv4KConstraints   = { video: {width: {exact: 3840}, height: {exact: 2160}}};
-  const cinema4KConstraints = { video: {width: {exact: 4096}, height: {exact: 2160}}};
-  const eightKConstraints = { video: {width: {exact: 7680}, height: {exact: 4320}}};
 
   stopButton.onclick = () => {
     addToEventLog('Stop button clicked.');
@@ -108,57 +151,13 @@ document.addEventListener('DOMContentLoaded', function(event) {
     modeButtons.style.display = "none";
     rateInput.style.display = "none";
     keyInput.style.display = "none";
-
-    switch(preferredResolution) {
-       case "qvga":
-         constraints = qvgaConstraints;
-         addToEventLog('QVGA selected');
-         break;
-       case "vga":
-         constraints = vgaConstraints;
-         addToEventLog('VGA selected');
-         break;
-       case "hd":
-         constraints = hdConstraints;
-         addToEventLog('HD selected');
-         break;
-       case "full-hd":
-         constraints = fullHdConstraints;
-         addToEventLog('Full HD selected');
-         break;
-       case "tv4K":
-         constraints = tv4KConstraints;
-         addToEventLog('4K TV selected');
-         break;
-       case "cinema4K":
-         constraints = cinema4KConstraints;
-         addToEventLog('Cinema 4K selected');
-         break;
-       case "eightK":
-         constraints = eightKConstraints;
-         addToEventLog('8K selected');
-         break;
-       default:
-         constraints = qvgaConstraints;
-         addToEventLog('Default (QVGA) selected');
-         break;
-    }
-    getMedia(constraints);
+    startMedia();
   }
 
-  async function getMedia(constraints) {
+  async function startMedia() {
     if (stopped) return;
-    addToEventLog('getMedia called'); 
+    addToEventLog('startMedia called'); 
     try {
-      // Get a MediaStream from the webcam.
-      const mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-
-      // Connect the webcam stream to the video element.
-      document.getElementById('inputVideo').srcObject = mediaStream;
-
-      // Collect the WebTransport URL
-      const url = document.getElementById('url').value;
-
       // Collect the bitrate
       const rate = document.getElementById('rate').value;
 
@@ -236,11 +235,14 @@ document.addEventListener('DOMContentLoaded', function(event) {
            break;
       }
 
+      // Collect the WebTransport URL
+      const url = document.getElementById('url').value;    
 
       // Transfer the readable stream to the worker, as well as other info from the user interface.
       // NOTE: transferring frameStream and reading it in the worker is more
       // efficient than reading frameStream here and transferring VideoFrames individually.
       streamWorker.postMessage({ type: "stream", config: config, url: url, streams: {input: inputStream, output: outputStream}}, [inputStream, outputStream]);
+
     } catch(e) {
        addToEventLog(e.name + ": " + e.message, 'fatal');
     }
