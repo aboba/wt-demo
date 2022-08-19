@@ -9,29 +9,59 @@ var latencyPref = "realtime";
 var hw = "no-preference";
 var streamWorker;
 var inputStream, outputStream;
-var rate = document.querySelector('#rate');
-var connectButton = document.querySelector('#connect');
-var stopButton = document.querySelector('#stop');
-var codecButtons = document.querySelector('#codecButtons');
-var resButtons = document.querySelector('#resButtons');
-var modeButtons = document.querySelector('#modeButtons');
-var hwButtons = document.querySelector('#hwButtons');
+const rate = document.querySelector('#rate');
+const connectButton = document.querySelector('#connect');
+const stopButton = document.querySelector('#stop');
+const codecButtons = document.querySelector('#codecButtons');
+const resButtons = document.querySelector('#resButtons');
+const modeButtons = document.querySelector('#modeButtons');
+const hwButtons = document.querySelector('#hwButtons');
+const videoSelect = document.querySelector('select#videoSource');
+const selectors = [videoSelect];
 connectButton.disabled = false;
 stopButton.disabled = true;
 
-const qvgaConstraints   = { video: {width: {exact: 320},  height: {exact: 240}}};
-const vgaConstraints    = { video: {width: {exact: 640},  height: {exact: 480}}};
-const hdConstraints     = { video: {width: {exact: 1280}, height: {exact: 720}}};
-const fullHdConstraints = { video: {width: {exact: 1920}, height: {exact: 1080}}};
-const tv4KConstraints   = { video: {width: {exact: 3840}, height: {exact: 2160}}};
-const cinema4KConstraints = { video: {width: {exact: 4096}, height: {exact: 2160}}};
-const eightKConstraints = { video: {width: {exact: 7680}, height: {exact: 4320}}};
+videoSelect.onchange = function () {
+  videoSource = videoSelect.value; 
+};
+
+let qvgaConstraints   = { video: {width: {exact: 320},  height: {exact: 240}}};
+let vgaConstraints    = { video: {width: {exact: 640},  height: {exact: 480}}};
+let hdConstraints     = { video: {width: {exact: 1280}, height: {exact: 720}}};
+let fullHdConstraints = { video: {width: {exact: 1920}, height: {exact: 1080}}};
+let tv4KConstraints   = { video: {width: {exact: 3840}, height: {exact: 2160}}};
+let cinema4KConstraints = { video: {width: {exact: 4096}, height: {exact: 2160}}};
+let eightKConstraints = { video: {width: {exact: 7680}, height: {exact: 4320}}};
 let constraints = qvgaConstraints;
 
 function addToEventLog(text, severity = 'info') {
   let log = document.querySelector('textarea');
   log.value += 'log-' + severity + ': ' + text + '\n';
   if (severity == 'fatal') stop();
+}
+
+function gotDevices(deviceInfos) {
+  // Handles being called several times to update labels. Preserve values.
+  const values = selectors.map(select => select.value);
+  selectors.forEach(select => {
+    while (select.firstChild) {
+      select.removeChild(select.firstChild);
+    }
+  });
+  for (let i = 0; i !== deviceInfos.length; ++i) {
+    const deviceInfo = deviceInfos[i];
+    const option = document.createElement('option');
+    option.value = deviceInfo.deviceId;
+    if (deviceInfo.kind === 'videoinput') {
+      option.text = deviceInfo.label || `camera ${videoSelect.length + 1}`;
+      videoSelect.appendChild(option);
+    } 
+  }
+  selectors.forEach((select, selectorIndex) => {
+    if (Array.prototype.slice.call(select.childNodes).some(n => n.value === values[selectorIndex])) {
+      select.value = values[selectorIndex];
+    }
+  });
 }
 
 async function getResValue(radio) {
@@ -71,10 +101,12 @@ async function getResValue(radio) {
         track.stop();
       });
     }
+    gotDevices(await navigator.mediaDevices.enumerateDevices());
+    constraints.deviceId = videoSource ? {exact: videoSource} : undefined;
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     document.getElementById('inputVideo').srcObject = mediaStream;
   } catch(e){
-    addToEventLog(`gUM error: ${e.message}`);
+    addToEventLog(`EnumerateDevices or gUM error: ${e.message}`);
   }
 }
 
@@ -124,6 +156,12 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     return;
   }
 
+  try {
+    gotDevices(await navigator.mediaDevices.enumerateDevices());
+  } catch (e) {
+    addToEventLog('Error in Device enumeration');
+  }
+  constraints.deviceId = videoSource ? {exact: videoSource} : undefined;
   // Get a MediaStream from the webcam.
   mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
   // Connect the webcam stream to the video element.
@@ -236,7 +274,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       }
 
       // Collect the WebTransport URL
-      const url = document.getElementById('url').value;    
+      const url = document.getElementById('url').value;
 
       // Transfer the readable stream to the worker, as well as other info from the user interface.
       // NOTE: transferring frameStream and reading it in the worker is more
