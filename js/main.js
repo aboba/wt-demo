@@ -1,7 +1,7 @@
 'use strict';
 
 var preferredResolution;
-let mediaStream, bitrate = 3000000;
+let mediaStream, videoSource, bitrate = 3000000;
 var stopped = false;
 var preferredCodec ="VP8";
 var mode = "L1T3";
@@ -102,11 +102,16 @@ async function getResValue(radio) {
       });
     }
     gotDevices(await navigator.mediaDevices.enumerateDevices());
-    constraints.deviceId = videoSource ? {exact: videoSource} : undefined;
+    constraints.deviceId = (videoSource ? {exact: videoSource} : undefined);
+    //addToEventLog('videoSource: ' + JSON.stringify(videoSource) + ' DeviceId: ' + constraints.deviceId);
+  } catch(e) {
+    addToEventLog(`EnumerateDevices error: ${e.message}`);
+  }
+  try {
     mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     document.getElementById('inputVideo').srcObject = mediaStream;
-  } catch(e){
-    addToEventLog(`EnumerateDevices or gUM error: ${e.message}`);
+  } catch(e) {
+    addToEventLog(`getUserMedia error: ${e.message}`);
   }
 }
 
@@ -162,6 +167,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     addToEventLog('Error in Device enumeration');
   }
   constraints.deviceId = videoSource ? {exact: videoSource} : undefined;
+  //addToEventLog('videoSource: ' + JSON.stringify(videoSource) + ' DeviceId: ' + constraints.deviceId);
   // Get a MediaStream from the webcam.
   mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
   // Connect the webcam stream to the video element.
