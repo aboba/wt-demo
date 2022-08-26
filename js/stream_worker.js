@@ -4,6 +4,9 @@ let encoder, decoder, pl, started = false, stopped = false;
 
 let rtt_aggregate = {
   all: [],
+  fquart: 0,
+  median: 0,
+  tquart: 0,
   min: Number.MAX_VALUE,
   max: 0,
   avg: 0,
@@ -67,13 +70,21 @@ function rtt_report() {
   rtt_aggregate.all.sort();
   const len = rtt_aggregate.all.length;
   const half = len >> 1;
+  const f = (len + 1) >> 2;
+  const t = (3 * (len + 1)) >> 2;
+  const alpha1 = (len + 1)/4 - Math.trunc((len + 1)/4);
+  const alpha3 = (3 * (len + 1)/4) - Math.trunc(3 * (len + 1)/4);
+  const fquart = rtt_aggregate.all[f] + alpha1 * (rtt_aggregate.all[f + 1] - rtt_aggregate.all[f]);
+  const tquart = rtt_aggregate.all[t] + alpha3 * (rtt_aggregate.all[t + 1] - rtt_aggregate.all[t]);
   const median = len % 2 === 1 ? rtt_aggregate.all[len >> 1] : (rtt_aggregate.all[half - 1] + rtt_aggregate.all[half]) / 2;
   return {
      count: len,
      min: rtt_aggregate.min,
-     max: rtt_aggregate.max,
+     fquart: fquart,
      avg: rtt_aggregate.sum / len,
-     median,
+     median: median,
+     tquart: tquart,
+     max: rtt_aggregate.max,
   };
 }
 
