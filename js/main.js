@@ -35,16 +35,6 @@ const fullHdConstraints = {video: {width: {min: 1920}, height: {min: 1080}}};
 const tv4KConstraints   = {video: {width: {exact: 3840}, height: {exact: 2160}}};
 const cinema4KConstraints = {video: {width: {exact: 4096}, height: {exact: 2160}}};
 const eightKConstraints = {video: {width: {min: 7680}, height: {min: 4320}}};
-
-// Old constraints
-//const qvgaConstraints   = { video: {width: {exact: 320},  height: {exact: 240}}};
-//const vgaConstraints    = { video: {width: {exact: 640},  height: {exact: 480}}};
-//const hdConstraints     = { video: {width: {exact: 1280}, height: {exact: 720}}};
-//const fullHdConstraints = { video: {width: {exact: 1920}, height: {exact: 1080}}};
-//const tv4KConstraints   = { video: {width: {exact: 3840}, height: {exact: 2160}}};
-//const cinema4KConstraints = { video: {width: {exact: 4096}, height: {exact: 2160}}};
-//const eightKConstraints = { video: {width: {exact: 7680}, height: {exact: 4320}}};
-
 let constraints = qvgaConstraints;
 
 function addToEventLog(text, severity = 'info') {
@@ -202,6 +192,8 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         data.addColumn('number', 'RTT');
         data.addRows(JSON.parse(e.data.text));
         let options = {
+          width:  800,
+          height: 500,
           title: 'RTT (ms) versus Frame length',
           haxis: {title: 'Length'},
           vaxis: {title: 'RTT'},
