@@ -273,8 +273,9 @@ function decqueue_report() {
   };
 }
 
-async function get_frame(reader, number) {
+async function get_frame(readable, number) {
   let i=0, packlen, totalen = 0, frame, sendTime, seqno, first = true;
+  let reader = readable.getReader();
   while (true) {
     try {
       const { value, done } = await reader.read();
@@ -841,8 +842,7 @@ SSRC = this.config.ssrc
              } else {
                number = this.streamNumber++;
                //self.postMessage({text: `New incoming stream # ${number}`});
-               stream_reader = value.getReader();
-               let frame = await get_frame(stream_reader, number);
+               let frame = await get_frame(value, number);
                if (frame) {
                  controller.enqueue(frame);
                }
