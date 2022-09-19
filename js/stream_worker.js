@@ -831,12 +831,13 @@ SSRC = this.config.ssrc
            try {
              const { value, done } = await this.reader.read();
              if (done) {
+               this.reader.releaseLock();
                controller.close();
                self.postMessage({severity: 'fatal', text: 'Done accepting unidirectional streams'});
                return;
              } else {
                number = this.streamNumber++;
-               //self.postMessage({text: 'New incoming stream # ' + number});
+               //self.postMessage({text: `New incoming stream # ${number}`});
                stream_reader = value.getReader();
                let frame = await get_frame(stream_reader, number);
                if (frame) {
