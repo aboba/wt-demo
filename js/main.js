@@ -290,8 +290,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         config.pt = 1;
         break;
       case "H265":
-        config.codec = "hvc1.2.4.L123.00"; // Main 10 profile, level 4.1, main Tier
-     // config.codec = "hvc1.1.6.L123.00"  // Main profile, level 4.1, main Tier
+        config.codec = "hvc1.1.6.L123.00"  // Main profile, level 4.1, main Tier
         config.hevc = { format: "annexb" };
         config.pt = 2;
         addToEventLog('HEVC Encoding not supported', 'fatal');
@@ -302,11 +301,9 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         break;
       case "VP9":
          config.codec = "vp09.00.10.08"; //VP9, Profile 0, level 1, bit depth 8
-         //config.codec = "vp09.01.20.08.01" //VP9, Profile 1, level 2, bit depth 8
          config.pt = 4;
          break;
       case "AV1":
-         //config.codec = "av01.0.08M.10.0.110.09.16.09.0" // AV1 Main Profile, level 4.0, Main tier, 10-bit content, non-monochrome, with 4:2:0 chroma subsampling
          config.codec = "av01.0.08M.10.0.110.09" // AV1 Main Profile, level 4.0, Main tier, 10-bit content, non-monochrome, with 4:2:0 chroma subsampling
          config.pt = 5;
          break;
