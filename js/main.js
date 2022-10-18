@@ -1,13 +1,13 @@
 'use strict';
 
-var preferredResolution;
+let preferredResolution;
 let mediaStream, videoSource, bitrate = 300000;
-var stopped = false;
-var preferredCodec ="VP8";
-var mode = "L1T3";
-var latencyPref = "realtime";
-var hw = "no-preference";
-var streamWorker;
+let stopped = false;
+let preferredCodec ="VP8";
+let mode = "L1T3";
+let latencyPref = "realtime";
+let hw = "no-preference";
+let streamWorker;
 let inputStream, outputStream;
 const rate = document.querySelector('#rate');
 const connectButton = document.querySelector('#connect');
@@ -290,7 +290,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         config.pt = 1;
         break;
       case "H265":
-        config.codec = "hvc1.1.6.L123.00"  // Main profile, level 4.1, main Tier
+        config.codec = "hvc1.2.4.L123.00"; // Main 10 profile, level 4.1, main Tier
         config.hevc = { format: "annexb" };
         config.pt = 2;
         addToEventLog('HEVC Encoding not supported', 'fatal');

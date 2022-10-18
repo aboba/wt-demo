@@ -749,11 +749,6 @@ SSRC = this.config.ssrc
            //If the frame is non-discardable (config or base layer) set minimum much higher
            rto = 4. * rto ;
          }
-         try {
-           await writer.write(chunk);
-         } catch (e) {
-           self.postMessage({text: `Failure to write frame: ${e.message}`});
-         }
          timeoutId = setTimeout(function() {
            self.postMessage({text: `Aborting seqno: ${seqno} len: ${packlen} i: ${i} d: ${d} b: ${b} pt: ${pt} tid: ${tid} Send RTO: ${rto}`});
            writer.abort('Send taking too long').then(() => {
@@ -763,6 +758,11 @@ SSRC = this.config.ssrc
            });
          }, rto);
          try {
+           await writer.write(chunk);
+         } catch (e) {
+           self.postMessage({text: `Failure to write frame: ${e.message}`});
+         }
+         try {
            await writer.close();
          } catch (e) {
            self.postMessage({text: 'Stream cannot be closed (due to abort).'});
@@ -770,7 +770,7 @@ SSRC = this.config.ssrc
          try {
            writer.releaseLock();
          } catch (e) {
-           self.postMessage({text: `Stream release failed: ${e.message}`});
+           self.postMessage({text: `writer releaseLock failed: ${e.message}`});
          }
          try {
            clearTimeout(timeoutId);
@@ -780,13 +780,10 @@ SSRC = this.config.ssrc
        }, 
        async close(controller) {
          controller.close();
-         // close the transport? 
          await transport.close();
        }, 
        async abort(reason) {
          controller.close();
-         // called when ws.abort(reason)
-         // close the transport?
          await transport.close(); 
        } 
      });
