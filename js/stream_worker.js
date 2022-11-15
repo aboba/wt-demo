@@ -589,11 +589,18 @@ SSRC = this.config.ssrc
          hydChunk.pt = pt;
          hydChunk.seqNo = seqNo;
          //self.postMessage({text: 'seqNo: ' + seqNo + ' Deserial hdr: ' + HEADER_LENGTH + ' + ' chunk length: ' + hydChunk.byteLength });
-         jb_update(hydChunk);
-         if (newChunk = jb_dequeue(seqPointer)) {
-            //self.postMessage({text: 'seqNo: ' + newChunk.seqNo + ' chunk length: ' + newChunk.byteLength });
-            seqPointer++;
-            controller.enqueue(newChunk);
+         if (hydChunk.seqNo == seqPointer) {
+           // No holes in the sequence number space
+           seqPointer++
+           controller.enqueue(hydChunk); 
+         } else {
+           // Received chunk is not the one we are looking for
+           jb_update(hydChunk);
+           if (newChunk = jb_dequeue(seqPointer)) {
+              //self.postMessage({text: 'seqNo: ' + newChunk.seqNo + ' chunk length: ' + newChunk.byteLength });
+              seqPointer++;
+              controller.enqueue(newChunk);
+           }
          }
        }
      });
@@ -779,8 +786,8 @@ SSRC = this.config.ssrc
            //If the frame is non-discardable (config or base layer) set minimum much higher
            rto = 3. * rto ;
          }
-         timeoutId = setTimeout(function() {
-           writer.abort('Send taking too long').then(() => {
+         timeoutId = setTimeout(() => {
+           writer.abort().then(() => {
              self.postMessage({text: 'Abort failed.'});
            }).catch((e) => {
              self.postMessage({text: `Aborted seqno: ${seqno} len: ${packlen} i: ${i} d: ${d} b: ${b} pt: ${pt} tid: ${tid} Send RTO: ${rto}`});
@@ -800,12 +807,12 @@ SSRC = this.config.ssrc
          });
        }, 
        async close(controller) {
-         controller.close();
          await transport.close();
+         controller.close();
        }, 
        async abort(reason) {
+         await transport.close();
          controller.close();
-         await transport.close(); 
        } 
      });
    }
@@ -858,16 +865,22 @@ SSRC = this.config.ssrc
        this.inputStream
            .pipeThrough(this.EncodeVideoStream(self,this.config))
            .pipeThrough(this.Serialize(self,this.config))
-           .pipeTo(this.createSendStream(self,this.transport));
-     }); 
+           .pipeTo(this.createSendStream(self,this.transport)).then(
+             () =>  {resolve('Receive pipeline ')},
+             (e) => {reject(e)}
+           );
+     });
      const promise2 = new Promise ((resolve, reject) => {
        this.createReceiveStream(self,this.transport)
            .pipeThrough(this.Deserialize(self))
            .pipeThrough(this.DecodeVideoStream(self))
-           .pipeTo(this.outputStream);
+           .pipeTo(this.outputStream).then(
+             () =>  {resolve('Send pipeline ')}, 
+             (e) => {reject(e)}
+           );
      });
-     Promise.all([promise1, promise2]).then(() => {
-       self.postMessage({text: 'Pipelines started'});
+     Promise.all([promise1, promise2]).then((values) => {
+       self.postMessage({text: 'Resolutions: ' + JSON.stringify(values)});
      }).catch((e) => {
        self.postMessage({severity: 'fatal', text: `pipeline error: ${e.message}`});
      });
