@@ -68,7 +68,7 @@ function metrics_report() {
       e2e.all.push(data);
     }
   }
-  //addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
+  // addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
   return {
      count: e2e.all.length
   };
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
         // draw rtt chart
-        addToEventLog('Data dump: ' + e.data.text);
+        // addToEventLog('Data dump: ' + e.data.text);
         data.addColumn('number', 'Length');
         data.addColumn('number', 'RTT');
         data.addRows(JSON.parse(e.data.text));
@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
-        //addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
+        // addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
         data.addColumn('number', 'Frame Number');
         data.addColumn('number', 'Glass-Glass Latency (ms)');
         data.addRows(e2e.all);
