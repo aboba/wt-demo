@@ -23,11 +23,13 @@ const resButtons = document.querySelector('#resButtons');
 const modeButtons = document.querySelector('#modeButtons');
 const hwButtons = document.querySelector('#hwButtons');
 const chart_div = document.getElementById('chart_div');
+const chart2_div = document.getElementById('chart2_div');
 const videoSelect = document.querySelector('select#videoSource');
 const outputVideo = document.getElementById('outputVideo');
 const inputVideo  = document.getElementById('inputVideo');
 const selectors = [videoSelect];
 chart_div.style.display = "none";
+chart2_div.style.display = "none";
 connectButton.disabled = false;
 stopButton.disabled = true;
 
@@ -183,6 +185,7 @@ function stop() {
   stopButton.disabled = true;
   connectButton.disabled = true;
   chart_div.style.display = "initial";
+  chart2_div.style.display = "initial";
   streamWorker.postMessage({ type: "stop" });
   try {
     inputStream.cancel();
@@ -232,29 +235,29 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     if (e.data.severity != 'chart'){
        addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
     } else {
-      //google.charts.load('current', {'packages':['corechart']});
-      //google.charts.setOnLoadCallback(() => {
-        //let data = new google.visualization.DataTable();
-        //draw rtt chart
-        //addToEventLog('Data dump: ' + e.data.text);
-        //data.addColumn('number', 'Length');
-        //data.addColumn('number', 'RTT');
-        //data.addRows(JSON.parse(e.data.text));
-        //let options = {
-        //  width:  900,
-        //  height: 500,
-        //  title: 'RTT (ms) versus Frame length',
-        //  haxis: {title: 'Length'},
-        //  vaxis: {title: 'RTT'},
-        //  legend: 'none'
-        //};
-        //let chart = new google.visualization.ScatterChart(chart_div);
-        //chart.draw(data, options);
-     //});
-     // draw the glass-glass latency chart
-     metrics_report();
-     google.charts.load('current', {'packages':['corechart']});
-     google.charts.setOnLoadCallback(() => {
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(() => {
+        let data = new google.visualization.DataTable();
+        // draw rtt chart
+        addToEventLog('Data dump: ' + e.data.text);
+        data.addColumn('number', 'Length');
+        data.addColumn('number', 'RTT');
+        data.addRows(JSON.parse(e.data.text));
+        let options = {
+          width:  900,
+          height: 500,
+          title: 'RTT (ms) versus Frame length',
+          haxis: {title: 'Length'},
+          vaxis: {title: 'RTT'},
+          legend: 'none'
+        };
+        let chart = new google.visualization.ScatterChart(chart_div);
+        chart.draw(data, options);
+      });
+      // draw the glass-glass latency chart
+      metrics_report();
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
         //addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
         data.addColumn('number', 'Frame Number');
@@ -268,7 +271,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
           vaxis: {title: 'Glass-Glass Latency'},
           legend: 'none'
         };
-        let chart = new google.visualization.ScatterChart(chart_div);
+        let chart = new google.visualization.ScatterChart(chart2_div);
         chart.draw(data, options);
       });
     }
