@@ -7,3 +7,6 @@ To see the demo live, point your browser to:  https://webrtc.internaut.com/wc/wt
 
 Note: The demo now supports Bring Your Own Buffer (BYOB) reads, which requires Chromium M108+.
 
+A slide presentation introducing WebTransport and providing some information on the demo is here: 
+https://docs.google.com/presentation/d/1ZjSl-FPv3Xqjfks26wBYtVP2vEhEgkUpu_hNUxhU0NI/
+
