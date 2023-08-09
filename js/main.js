@@ -35,7 +35,7 @@ connectButton.disabled = false;
 stopButton.disabled = true;
 
 videoSelect.onchange = function () {
-  videoSource = videoSelect.value; 
+  videoSource = videoSelect.value;
 };
 
 const qvgaConstraints   = {video: {width: 320,  height: 240}};
@@ -96,7 +96,7 @@ function gotDevices(deviceInfos) {
     if (deviceInfo.kind === 'videoinput') {
       option.text = deviceInfo.label || `camera ${videoSelect.length + 1}`;
       videoSelect.appendChild(option);
-    } 
+    }
   }
   selectors.forEach((select, selectorIndex) => {
     if (Array.prototype.slice.call(select.childNodes).some(n => n.value === values[selectorIndex])) {
@@ -243,6 +243,29 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     if (e.data.severity != 'chart'){
        addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
     } else {
+      const parsed = JSON.parse(e.data.text);
+      const x = parsed.map(item => item[0]);
+      const y = parsed.map(item => item[1]);
+      // TODO: more options needed from https://plotly.com/javascript/line-and-scatter
+      Plotly.newPlot(chart_div, [{
+          x,
+          y,
+          mode: 'markers',
+          type: 'scatter',
+      }], {
+        xaxis: {
+          title: 'Length', // Frame size (bytes)?
+          autorange: false,
+          range: [0, Math.max.apply(null, x) + 100 /* + a bit, 10%-ish to make it look good */],
+        },
+        yaxis: {
+          title: 'RTT',
+          //autorange: false,
+          //range: [0, Math.max.apply(null, y) /* + a bit, 10%-ish to make it look good */],
+        },
+        title: 'RTT (ms) versus Frame length',
+      });
+      /*
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
@@ -262,8 +285,30 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         let chart = new google.visualization.ScatterChart(chart_div);
         chart.draw(data, options);
       });
+      */
       // draw the glass-glass latency chart
-      metrics_report();
+      metrics_report(); // sets e2e.all?!
+      const e2eX = e2e.all.map(item => item[0]);
+      const e2eY = e2e.all.map(item => item[1]);
+      Plotly.newPlot(chart2_div, [{
+        x: e2eX,
+        y: e2eY,
+        mode: 'markers',
+        type: 'scatter',
+      }], {
+        xaxis: {
+          title: 'Frame Number',
+          autorange: false,
+          range: [0, Math.max.apply(null, e2eX) + 100 /* + a bit, 10%-ish to make it look good */],
+        },
+        yaxis: {
+          title: 'Glass-Glass Latency',
+          //autorange: false,
+          //range: [0, Math.max.apply(null, e2eY) /* + a bit, 10%-ish to make it look good */],
+        },
+        title: 'Glass-Glass Latency (ms) versus Frame Number',
+      });
+        /*
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
@@ -282,6 +327,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         let chart = new google.visualization.ScatterChart(chart2_div);
         chart.draw(data, options);
       });
+      */
     }
   }, false);
 
@@ -307,7 +353,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
 
   async function startMedia() {
     if (stopped) return;
-    addToEventLog('startMedia called'); 
+    addToEventLog('startMedia called');
     // Collect the bitrate
     const rate = document.getElementById('rate').value;
 
@@ -364,11 +410,11 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       resolutionScale: 1,
       framerateScale: 1.0,
     };
-   
+
     let ssrcArr = new Uint32Array(1);
     window.crypto.getRandomValues(ssrcArr);
     const ssrc = ssrcArr[0];
-  
+
     const config = {
       alpha: "discard",
       latencyMode: latencyPref,
@@ -378,7 +424,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       height: ts.height/vConfig.resolutionScale,
       hardwareAcceleration: encHw,
       decHwAcceleration: decHw,
-      bitrate: rate, 
+      bitrate: rate,
       framerate: ts.frameRate/vConfig.framerateScale,
       keyInterval: vConfig.keyInterval,
       ssrc:  ssrc
@@ -396,12 +442,12 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         break;
       case "H265":
         config.codec = "hev1.1.6.L120.B0";  // Main profile, level 4, up to 2048 x 1080@30
-       // config.codec = "hev1.1.4.L93.B0"  Main 10 
+       // config.codec = "hev1.1.4.L93.B0"  Main 10
        // config.codec = "hev1.2.4.L120.B0" Main 10, Level 4.0
        // config.codec = "hev1.1.6.L93.B0"; // Main profile, level 3.1, up to 1280 x 720@33.7
         config.hevc = { format: "annexb" };
         config.pt = 2;
-        break; 
+        break;
       case "VP8":
         config.codec = "vp8";
         config.pt = 3;
