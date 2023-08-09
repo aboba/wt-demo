@@ -210,15 +210,17 @@ function stop() {
 document.addEventListener('DOMContentLoaded', async function(event) {
   if (stopped) return;
   addToEventLog('DOM Content Loaded');
-
-  if (typeof MediaStreamTrackProcessor === 'undefined' ||
-      typeof MediaStreamTrackGenerator === 'undefined') {
-    addToEventLog('Your browser does not support the WebCodecs and Mediacapture-transform APIs.', 'fatal');
+  
+  if (typeof WebTransport === 'undefined') {
+    addToEventLog('Your browser does not support the WebTransport API.', 'fatal');
     return;
   }
 
-  if (typeof WebTransport === 'undefined') {
-    addToEventLog('Your browser does not support the WebTransport API.', 'fatal');
+  // Need to support standard mediacapture-transform implementations
+
+  if (typeof MediaStreamTrackProcessor === 'undefined' ||
+      typeof MediaStreamTrackGenerator === 'undefined') {
+    addToEventLog('Your browser does not support the MSTP and MSTG APIs.', 'fatal');
     return;
   }
 
