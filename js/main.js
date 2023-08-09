@@ -242,13 +242,27 @@ document.addEventListener('DOMContentLoaded', async function(event) {
        addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
     } else {
       const parsed = JSON.parse(e.data.text);
+      const x = parsed.map(item => item[0]);
+      const y = parsed.map(item => item[1]);
+      // TODO: more options needed from https://plotly.com/javascript/line-and-scatter
       Plotly.newPlot(chart_div, [{
-          x: parsed.map(item => item[0]),
-          y: parsed.map(item => item[1]),
+          x,
+          y,
           mode: 'markers',
           type: 'scatter',
-      }]);
-      // TODO: more options needed from https://plotly.com/javascript/line-and-scatter/
+      }], {
+        xaxis: {
+          title: 'Length', // Frame size (bytes)?
+          autorange: false,
+          range: [0, Math.max.apply(null, x) + 100 /* + a bit, 10%-ish to make it look good */],
+        },
+        yaxis: {
+          title: 'RTT',
+          //autorange: false,
+          //range: [0, Math.max.apply(null, y) /* + a bit, 10%-ish to make it look good */],
+        },
+        title: 'RTT (ms) versus Frame length',
+      });
       /*
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(() => {
@@ -269,8 +283,30 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         let chart = new google.visualization.ScatterChart(chart_div);
         chart.draw(data, options);
       });
+      */
       // draw the glass-glass latency chart
-      metrics_report();
+      metrics_report(); // sets e2e.all?!
+      const e2eX = e2e.all.map(item => item[0]);
+      const e2eY = e2e.all.map(item => item[1]);
+      Plotly.newPlot(chart2_div, [{
+        x: e2eX,
+        y: e2eY,
+        mode: 'markers',
+        type: 'scatter',
+      }], {
+        xaxis: {
+          title: 'Frame Number',
+          autorange: false,
+          range: [0, Math.max.apply(null, e2eX) + 100 /* + a bit, 10%-ish to make it look good */],
+        },
+        yaxis: {
+          title: 'Glass-Glass Latency',
+          //autorange: false,
+          //range: [0, Math.max.apply(null, e2eY) /* + a bit, 10%-ish to make it look good */],
+        },
+        title: 'Glass-Glass Latency (ms) versus Frame Number',
+      });
+        /*
       google.charts.load('current', {'packages':['corechart']});
       google.charts.setOnLoadCallback(() => {
         let data = new google.visualization.DataTable();
