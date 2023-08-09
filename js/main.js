@@ -265,27 +265,6 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         },
         title: 'RTT (ms) versus Frame length',
       });
-      /*
-      google.charts.load('current', {'packages':['corechart']});
-      google.charts.setOnLoadCallback(() => {
-        let data = new google.visualization.DataTable();
-        // draw rtt chart
-        // addToEventLog('Data dump: ' + e.data.text);
-        data.addColumn('number', 'Length');
-        data.addColumn('number', 'RTT');
-        data.addRows(JSON.parse(e.data.text));
-        let options = {
-          width:  900,
-          height: 500,
-          title: 'RTT (ms) versus Frame length',
-          haxis: {title: 'Length'},
-          vaxis: {title: 'RTT'},
-          legend: 'none'
-        };
-        let chart = new google.visualization.ScatterChart(chart_div);
-        chart.draw(data, options);
-      });
-      */
       // draw the glass-glass latency chart
       metrics_report(); // sets e2e.all?!
       const e2eX = e2e.all.map(item => item[0]);
@@ -308,26 +287,6 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         },
         title: 'Glass-Glass Latency (ms) versus Frame Number',
       });
-        /*
-      google.charts.load('current', {'packages':['corechart']});
-      google.charts.setOnLoadCallback(() => {
-        let data = new google.visualization.DataTable();
-        // addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
-        data.addColumn('number', 'Frame Number');
-        data.addColumn('number', 'Glass-Glass Latency (ms)');
-        data.addRows(e2e.all);
-        let options = {
-          width:  900,
-          height: 500,
-          title: 'Glass-Glass Latency (ms) versus Frame Number',
-          haxis: {title: 'Frame Number'},
-          vaxis: {title: 'Glass-Glass Latency'},
-          legend: 'none'
-        };
-        let chart = new google.visualization.ScatterChart(chart2_div);
-        chart.draw(data, options);
-      });
-      */
     }
   }, false);
 
