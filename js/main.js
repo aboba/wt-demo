@@ -210,7 +210,7 @@ function stop() {
 document.addEventListener('DOMContentLoaded', async function(event) {
   if (stopped) return;
   addToEventLog('DOM Content Loaded');
-  
+
   if (typeof WebTransport === 'undefined') {
     addToEventLog('Your browser does not support the WebTransport API.', 'fatal');
     return;
@@ -269,9 +269,15 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       metrics_report(); // sets e2e.all?!
       const e2eX = e2e.all.map(item => item[0]);
       const e2eY = e2e.all.map(item => item[1]);
+      const labels = e2e.all.map((item, index) => {
+        return Object.keys(metrics.all[index]).map(key => {
+          return `${key}: ${metrics.all[index][key]}`;
+        }).join('<br>');
+      });
       Plotly.newPlot(chart2_div, [{
         x: e2eX,
         y: e2eY,
+        text: labels,
         mode: 'markers',
         type: 'scatter',
       }], {
