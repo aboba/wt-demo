@@ -15,6 +15,9 @@ let metrics = {
 let e2e = {
    all: [],
 };
+let display_metrics = {
+   all: [],
+};
 const rate = document.querySelector('#rate');
 const connectButton = document.querySelector('#connect');
 const stopButton = document.querySelector('#stop');
@@ -56,7 +59,6 @@ function metrics_report() {
     return (100000 * (a.mediaTime - b.mediaTime) + a.output - b.output);
   });
   const len = metrics.all.length;
-  let j = 0;
   for (let i = 0; i < len ; i++ ) {
     if (metrics.all[i].output == 1) {
       const frameno = metrics.all[i].presentedFrames;
@@ -66,7 +68,9 @@ function metrics_report() {
       const expectedDisplayTime = metrics.all[i].expectedDisplayTime;
       const delay = metrics.all[i].expectedDisplayTime - metrics.all[i-1].expectedDisplayTime;
       const data = [frameno, g2g];
+      const info = {frameno: frameno, g2g: g2g, mediaTime: mediaTime, captureTime: captureTime, expectedDisplayTime: expectedDisplayTime, delay: delay};
       e2e.all.push(data);
+      display_metrics.all.push(info);
     }
   }
   // addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
@@ -266,12 +270,12 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         title: 'RTT (ms) versus Frame length',
       });
       // draw the glass-glass latency chart
-      metrics_report(); // sets e2e.all?!
+      metrics_report(); // sets e2e.all and display_metrics
       const e2eX = e2e.all.map(item => item[0]);
       const e2eY = e2e.all.map(item => item[1]);
       const labels = e2e.all.map((item, index) => {
-        return Object.keys(metrics.all[index]).map(key => {
-          return `${key}: ${metrics.all[index][key]}`;
+        return Object.keys(display_metrics.all[index]).map(key => {
+          return `${key}: ${display_metrics.all[index][key]}`;
         }).join('<br>');
       });
       Plotly.newPlot(chart2_div, [{
