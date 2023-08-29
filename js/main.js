@@ -59,23 +59,26 @@ function metrics_report() {
     return (100000 * (a.mediaTime - b.mediaTime) + a.output - b.output);
   });
   const len = metrics.all.length;
-  for (let i = 0; i < len ; i++ ) {
-    if (metrics.all[i].output == 1) {
+  if (len < 2) return; 
+  for (let i = 1; i < len ; i++ ) {
+    if ((metrics.all[i].output == 1) && (metrics.all[i-1].output == 0)) {
       const frameno = metrics.all[i].presentedFrames;
+      const fps = metrics.all[i].fps;
+      const time = metrics.all[i].elapsed;
       const g2g = metrics.all[i].expectedDisplayTime - metrics.all[i-1].captureTime;
       const mediaTime = metrics.all[i].mediaTime;
       const captureTime = metrics.all[i-1].captureTime;
       const expectedDisplayTime = metrics.all[i].expectedDisplayTime;
       const delay = metrics.all[i].expectedDisplayTime - metrics.all[i-1].expectedDisplayTime;
       const data = [frameno, g2g];
-      const info = {frameno: frameno, g2g: g2g, mediaTime: mediaTime, captureTime: captureTime, expectedDisplayTime: expectedDisplayTime, delay: delay};
+      const info = {frameno: frameno, fps: fps, time: time, g2g: g2g, mediaTime: mediaTime, captureTime: captureTime, expectedDisplayTime: expectedDisplayTime, delay: delay};
       e2e.all.push(data);
       display_metrics.all.push(info);
     }
   }
   // addToEventLog('Data dump: ' + JSON.stringify(e2e.all));
   return {
-     count: e2e.all.length
+     count: metrics.all.length
   };
 }
 
@@ -259,12 +262,12 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       }], {
         xaxis: {
           title: 'Length', // Frame size (bytes)?
-          autorange: false,
+          autorange: true,
           range: [0, Math.max.apply(null, x) + 100 /* + a bit, 10%-ish to make it look good */],
         },
         yaxis: {
           title: 'RTT',
-          //autorange: false,
+          autorange: true,
           //range: [0, Math.max.apply(null, y) /* + a bit, 10%-ish to make it look good */],
         },
         title: 'RTT (ms) versus Frame length',
@@ -287,12 +290,12 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       }], {
         xaxis: {
           title: 'Frame Number',
-          autorange: false,
+          autorange: true,
           range: [0, Math.max.apply(null, e2eX) + 100 /* + a bit, 10%-ish to make it look good */],
         },
         yaxis: {
           title: 'Glass-Glass Latency',
-          //autorange: false,
+          autorange: true,
           //range: [0, Math.max.apply(null, e2eY) /* + a bit, 10%-ish to make it look good */],
         },
         title: 'Glass-Glass Latency (ms) versus Frame Number',
@@ -354,6 +357,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       let elapsed = (now - start_time)/1000.;
       let fps = (++paint_count / elapsed).toFixed(3);
       metadata.fps = fps;
+      metadata.elapsed = elapsed;
       metrics_update(metadata);
       outputVideo.requestVideoFrameCallback(recordOutputFrames);
     };
@@ -367,6 +371,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       let elapsed = (now - start_time)/1000.;
       let fps = (++paint_count / elapsed).toFixed(3);
       metadata.fps = fps;
+      metadata.elapsed = elapsed;
       metrics_update(metadata);
       inputVideo.requestVideoFrameCallback(recordInputFrames);
     };
