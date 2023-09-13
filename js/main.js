@@ -18,7 +18,9 @@ let e2e = {
 let display_metrics = {
    all: [],
 };
+
 const rate = document.querySelector('#rate');
+const framer = document.querySelector('#framer');
 const connectButton = document.querySelector('#connect');
 const stopButton = document.querySelector('#stop');
 const codecButtons = document.querySelector('#codecButtons');
@@ -28,12 +30,16 @@ const decHwButtons = document.querySelector('#decHwButtons');
 const encHwButtons = document.querySelector('#encHwButtons');
 const chart_div = document.getElementById('chart_div');
 const chart2_div = document.getElementById('chart2_div');
+const chart3_div = document.getElementById('chart3_div');
+const chart4_div = document.getElementById('chart4_div');
 const videoSelect = document.querySelector('select#videoSource');
 const outputVideo = document.getElementById('outputVideo');
 const inputVideo  = document.getElementById('inputVideo');
 const selectors = [videoSelect];
 chart_div.style.display = "none";
 chart2_div.style.display = "none";
+chart3_div.style.display = "none";
+chart4_div.style.display = "none";
 connectButton.disabled = false;
 stopButton.disabled = true;
 
@@ -199,6 +205,8 @@ function stop() {
   connectButton.disabled = true;
   chart_div.style.display = "initial";
   chart2_div.style.display = "initial";
+  chart3_div.style.display = "initial";
+  chart4_div.style.display = "initial";
   streamWorker.postMessage({ type: "stop" });
   try {
     inputStream.cancel();
@@ -250,55 +258,31 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     if (e.data.severity != 'chart'){
        addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
     } else {
+      if (e.data.text == '') {
+        metrics_report();  // sets e2e.all and display_metrics
+        e.data.text = JSON.stringify(e2e.all);
+      }
       const parsed = JSON.parse(e.data.text);
       const x = parsed.map(item => item[0]);
       const y = parsed.map(item => item[1]);
       // TODO: more options needed from https://plotly.com/javascript/line-and-scatter
-      Plotly.newPlot(chart_div, [{
+      Plotly.newPlot(e.data.div, [{
           x,
           y,
           mode: 'markers',
           type: 'scatter',
       }], {
         xaxis: {
-          title: 'Length', // Frame size (bytes)?
+          title: e.data.x,
           autorange: true,
           range: [0, Math.max.apply(null, x) + 100 /* + a bit, 10%-ish to make it look good */],
         },
         yaxis: {
-          title: 'RTT',
+          title: e.data.y,
           autorange: true,
           //range: [0, Math.max.apply(null, y) /* + a bit, 10%-ish to make it look good */],
         },
-        title: 'RTT (ms) versus Frame length',
-      });
-      // draw the glass-glass latency chart
-      metrics_report(); // sets e2e.all and display_metrics
-      const e2eX = e2e.all.map(item => item[0]);
-      const e2eY = e2e.all.map(item => item[1]);
-      const labels = e2e.all.map((item, index) => {
-        return Object.keys(display_metrics.all[index]).map(key => {
-          return `${key}: ${display_metrics.all[index][key]}`;
-        }).join('<br>');
-      });
-      Plotly.newPlot(chart2_div, [{
-        x: e2eX,
-        y: e2eY,
-        text: labels,
-        mode: 'markers',
-        type: 'scatter',
-      }], {
-        xaxis: {
-          title: 'Frame Number',
-          autorange: true,
-          range: [0, Math.max.apply(null, e2eX) + 100 /* + a bit, 10%-ish to make it look good */],
-        },
-        yaxis: {
-          title: 'Glass-Glass Latency',
-          autorange: true,
-          //range: [0, Math.max.apply(null, e2eY) /* + a bit, 10%-ish to make it look good */],
-        },
-        title: 'Glass-Glass Latency (ms) versus Frame Number',
+        title: e.data.label,
       });
     }
   }, false);
@@ -319,6 +303,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     resButtons.style.display = "none";
     modeButtons.style.display = "none";
     rateInput.style.display = "none";
+    frameInput.style.display = "none";
     keyInput.style.display = "none";
     startMedia();
   }
@@ -328,6 +313,9 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     addToEventLog('startMedia called');
     // Collect the bitrate
     const rate = document.getElementById('rate').value;
+
+    // Collect the framerate
+    const framer = document.getElementById('framer').value;
 
     // Collect the keyframe gap
     const keygap = document.getElementById('keygap').value;
@@ -388,6 +376,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
     let ssrcArr = new Uint32Array(1);
     window.crypto.getRandomValues(ssrcArr);
     const ssrc = ssrcArr[0];
+    const framerat = Math.min(framer, ts.frameRate/vConfig.framerateScale) ; 
 
     const config = {
       alpha: "discard",
@@ -399,7 +388,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       hardwareAcceleration: encHw,
       decHwAcceleration: decHw,
       bitrate: rate,
-      framerate: ts.frameRate/vConfig.framerateScale,
+      framerate: framerat, 
       keyInterval: vConfig.keyInterval,
       ssrc:  ssrc
     };
