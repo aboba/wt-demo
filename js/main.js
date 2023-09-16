@@ -255,12 +255,18 @@ document.addEventListener('DOMContentLoaded', async function(event) {
   addToEventLog('Worker created.');
   // Print messages from the worker in the text area.
   streamWorker.addEventListener('message', function(e) {
+    let labels = '';
     if (e.data.severity != 'chart'){
        addToEventLog('Worker msg: ' + e.data.text, e.data.severity);
     } else {
       if (e.data.text == '') {
         metrics_report();  // sets e2e.all and display_metrics
         e.data.text = JSON.stringify(e2e.all);
+        labels = e2e.all.map((item, index) => {
+          return Object.keys(display_metrics.all[index]).map(key => {
+            return `${key}: ${display_metrics.all[index][key]}`;
+          }).join('<br>');
+        });
       }
       const parsed = JSON.parse(e.data.text);
       const x = parsed.map(item => item[0]);
@@ -269,6 +275,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
       Plotly.newPlot(e.data.div, [{
           x,
           y,
+          text: labels,
           mode: 'markers',
           type: 'scatter',
       }], {
