@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', async function(event) {
          config.pt = 4;
          break;
       case "AV1":
-         config.codec = "av01.0.08M.10.0.110.09" // AV1 Main Profile, level 4.0, Main tier, 10-bit content, non-monochrome, with 4:2:0 chroma subsampling
+         config.codec = "av01.0.08M.08.0.110.09" // AV1 Main Profile, level 4.0, Main tier, 8-bit content, non-monochrome, with 4:2:0 chroma subsampling
          config.pt = 5;
          break;
     }
