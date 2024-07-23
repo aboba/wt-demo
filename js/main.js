@@ -411,10 +411,10 @@ document.addEventListener('DOMContentLoaded', async function(event) {
         config.pt = 1;
         break;
       case "H265":
-        config.codec = "hev1.1.6.L120.B0";  // Main profile, level 4, up to 2048 x 1080@30
+       // config.codec = "hev1.1.6.L120.B0";  // Main profile, level 4, up to 2048 x 1080@30
        // config.codec = "hev1.1.4.L93.B0"  Main 10
        // config.codec = "hev1.2.4.L120.B0" Main 10, Level 4.0
-       // config.codec = "hev1.1.6.L93.B0"; // Main profile, level 3.1, up to 1280 x 720@33.7
+        config.codec = "hev1.1.6.L93.B0"; // Main profile, level 3.1, up to 1280 x 720@33.7
         config.hevc = { format: "annexb" };
         config.pt = 2;
         break;
