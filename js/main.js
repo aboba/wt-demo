@@ -71,7 +71,7 @@ function metrics_report() {
       const frameno = metrics.all[i].presentedFrames;
       const fps = metrics.all[i].fps;
       const time = metrics.all[i].elapsed;
-      const g2g = metrics.all[i].expectedDisplayTime - metrics.all[i-1].captureTime;
+      const g2g = Math.max(0, metrics.all[i].expectedDisplayTime - metrics.all[i-1].captureTime);
       const mediaTime = metrics.all[i].mediaTime;
       const captureTime = metrics.all[i-1].captureTime;
       const expectedDisplayTime = metrics.all[i].expectedDisplayTime;
