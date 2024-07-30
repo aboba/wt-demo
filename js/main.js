@@ -72,13 +72,12 @@ function metrics_report() {
       const frameno = metrics.all[i].presentedFrames;
       const fps = metrics.all[i].fps;
       const time = metrics.all[i].elapsed;
-      const g2g = Math.max(0, metrics.all[i].expectedDisplayTime - metrics.all[i].captureTime);
       const mediaTime = metrics.all[i].mediaTime;
       const captureTime = metrics.all[i].captureTime;
       const expectedDisplayTime = metrics.all[i].expectedDisplayTime;
-      const delay = metrics.all[i].expectedDisplayTime - metrics.all[i].expectedDisplayTime;
+      const g2g = Math.max(0, expectedDisplayTime - captureTime);
       const data = [frameno, g2g];
-      const info = {frameno: frameno, fps: fps, time: time, g2g: g2g, mediaTime: mediaTime, captureTime: captureTime, expectedDisplayTime: expectedDisplayTime, delay: delay};
+      const info = {frameno: frameno, fps: fps, time: time, g2g: g2g, mediaTime: mediaTime, captureTime: captureTime, expectedDisplayTime: expectedDisplayTime};
       e2e.all.push(data);
       display_metrics.all.push(info);
     }
